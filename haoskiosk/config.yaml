@@ -1,9 +1,9 @@
 ---
-name: "HAOS Kiosk Display"
+name: "HAOS Kiosk Display (Welizard Chromium Fork)"
 description: |
-  Start X server and browser on local HAOS server and display dashboards in
-  kiosk mode (Jeff Kosowsky)
-version: "1.3.0"
+  Chromium-first Welizard fork of HAOS Kiosk Display for local HAOS dashboard
+  screens and touch displays.
+version: "1.3.1-welizard.1"
 slug: "haoskiosk"
 
 arch:

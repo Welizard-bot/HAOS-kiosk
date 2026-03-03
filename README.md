@@ -2,13 +2,25 @@
 
 Display HA dashboards in kiosk mode directly on your HAOS server.
 
-## Author: Jeff Kosowsky (version: 1.3.0, February 2026)
+## Welizard Chromium Fork
+
+This repository is the `Welizard-bot` Chromium-first fork of the original
+HAOS-kiosk project.
+
+- Fork repo: <https://github.com/Welizard-bot/HAOS-kiosk>
+- Upstream repo: <https://github.com/puterboy/HAOS-kiosk>
+
+## Upstream Author: Jeff Kosowsky (base version: 1.3.0, February 2026)
 
 ## Description
 
 Launches X-Windows on local HAOS server followed by OpenBox window manager
-and Luakit browser starting with your configured default Home Assistant
+and a kiosk browser starting with your configured default Home Assistant
 dashboard.
+
+The Welizard fork targets Chromium as the primary runtime for modern HA
+dashboards, WebGL, emoji rendering, and richer UI flows on local touch
+displays.
 
 - Standard mouse, touchscreen, and keyboard interactions should work
   automatically as well as audio
@@ -34,11 +46,11 @@ touchpad so long as its `/dev/input/eventN` number is less than 25.
 
 **NOTE:** If you encounter issues with the Add-on, please first check the
 HAOSKiosk github
-[issues page](https://github.com/puterboy/HAOS-kiosk/issues) (open and
+[issues page](https://github.com/Welizard-bot/HAOS-kiosk/issues) (open and
 closed), then try the testing branch (add the following url to the
-repository: https://github.com/puterboy/HAOS-kiosk#testing). If still
+repository: https://github.com/Welizard-bot/HAOS-kiosk). If still
 please file an
-[issue on github](https://github.com/puterboy/HAOS-kiosk/issues) and
+[issue on github](https://github.com/Welizard-bot/HAOS-kiosk/issues) and
 \*\*include full details of your setup (including computer hardware and
 display type details)and what you did along with a complete log.
 
@@ -56,13 +68,13 @@ ______________________________________________________________________
 
 1. Click the **ADD ADD-ON REPOSITORY** button below.
 
-   [![Open your Home Assistant instance and show the add Add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fputerboy%2FHAOS-kiosk)
+   [![Open your Home Assistant instance and show the add Add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FWelizard-bot%2FHAOS-kiosk)
 
    - Click **Add → Close** (You might need to enter the **internal IP
      address** of your Home Assistant instance first) *or* go to the
      **Add-on store**.
    - Click **⋮ → Repositories**
-   - Fill in `https://github.com/puterboy/HAOS-kiosk`
+   - Fill in `https://github.com/Welizard-bot/HAOS-kiosk`
    - Click **Add → Close**
 
 2. Click on the Add-on, press **Install** and wait until the Add-on is
@@ -75,7 +87,7 @@ ______________________________________________________________________
 
 **If you are having trouble installing the add-on or getting displays and
 touchscreens working, please see the github issues page
-(https://github.com/puterboy/HAOS-kiosk/issues)as many common issues have
+(https://github.com/Welizard-bot/HAOS-kiosk/issues)as many common issues have
 already been addressed and resolved**
 
 ### Notes
