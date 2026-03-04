@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.3.1-welizard.6 - March 2026
+
+- Fix `touch_debug_level` schema so Home Assistant Supervisor can index the
+  add-on in the store instead of dropping it as invalid
+- Point repository metadata and installation docs to the canonical
+  `WeLizard/HAOS-kiosk` repository
+
 ## v1.3.1-welizard.5 - March 2026
 
 - Add a clear `Browser Engine` selector to the add-on configuration UI
