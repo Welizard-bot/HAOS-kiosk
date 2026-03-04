@@ -83,6 +83,7 @@ __copyright__ = "Copyright 2025 Jeff Kosowsky"
 REST_PORT: int = int(os.getenv("REST_PORT", "8080"))
 REST_IP: str = os.getenv("REST_IP", "127.0.0.1")
 REST_BEARER_TOKEN: str | None = os.getenv("REST_BEARER_TOKEN") or None  # None = no authorization required
+DISPLAY_CONFIG_PATH: str = os.getenv("DISPLAY_CONFIG_PATH", "/config/www/live2d/neiri-slides.json")
 
 # Note setting True is a real security risk since it allows all commands and tokens
 # If just want all programs, set COMMAND_WHITELIST_REGEX to "*"
@@ -93,6 +94,225 @@ MAX_CONCURRENT_COMMANDS: int = 5
 SHORT_TIMEOUT: int = 5  # Timeout used for simple commands
 
 DEFAULT_LAUNCH_URL = f"{(os.getenv('HA_URL') or 'about:blank').rstrip('/')}/{os.getenv('HA_DASHBOARD') or ''}".strip('/')
+EDITOR_CONFIG_COMMAND = "__editor_config__"
+
+DEFAULT_DISPLAY_CONFIG: dict[str, Any] = {
+    "version": 1,
+    "slides": []
+}
+
+EDITOR_HTML = """<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HAOS Kiosk Display Editor</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f1720;
+      --paper: #172230;
+      --paper-2: #213041;
+      --text: #e8eef4;
+      --muted: #9eb0c0;
+      --accent: #8fb8d6;
+      --line: rgba(255,255,255,0.12);
+      --ok: #80c48f;
+      --bad: #ef8e8e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font: 14px/1.5 "Aptos", "Segoe UI", sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #0f1720 0%, #122032 100%);
+    }
+    .wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 28px 20px 40px;
+      display: grid;
+      gap: 18px;
+    }
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+    }
+    h1, h2 { margin: 0; line-height: 1.05; }
+    h1 { font-size: 28px; letter-spacing: -0.04em; }
+    h2 { font-size: 16px; margin-bottom: 10px; }
+    p { margin: 0; color: var(--muted); }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto auto auto;
+      gap: 10px;
+      align-items: center;
+    }
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+    .field label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    input, textarea, button {
+      font: inherit;
+    }
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      color: var(--text);
+      background: var(--paper);
+    }
+    textarea {
+      min-height: 480px;
+      resize: vertical;
+      font-family: "Consolas", "Cascadia Code", monospace;
+      line-height: 1.45;
+    }
+    button {
+      border: 1px solid rgba(143,184,214,0.3);
+      background: linear-gradient(180deg, rgba(143,184,214,0.16), rgba(143,184,214,0.08));
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+    button:hover { border-color: rgba(143,184,214,0.5); }
+    .status {
+      min-height: 20px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .status.ok { color: var(--ok); }
+    .status.bad { color: var(--bad); }
+    .help code {
+      background: rgba(255,255,255,0.06);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel">
+      <h1>HAOS Kiosk Display</h1>
+      <p>Редактор произвольного JSON-конфига страниц дисплея. Это отдельный слой для экрана kiosk, а не замена редактора Lovelace.</p>
+    </section>
+    <section class="panel">
+      <div class="row">
+        <div class="field">
+          <label for="token">REST Bearer Token</label>
+          <input id="token" type="password" placeholder="Нужен только если токен включён в аддоне">
+        </div>
+        <button id="loadBtn" type="button">Загрузить</button>
+        <button id="validateBtn" type="button">Проверить JSON</button>
+        <button id="saveBtn" type="button">Сохранить</button>
+      </div>
+      <div id="status" class="status"></div>
+    </section>
+    <section class="panel">
+      <h2>Конфиг страниц дисплея</h2>
+      <textarea id="editor" spellcheck="false"></textarea>
+    </section>
+    <section class="panel help">
+      <h2>Как использовать</h2>
+      <p>1. Нажми <code>Загрузить</code>.</p>
+      <p>2. Измени JSON.</p>
+      <p>3. Нажми <code>Сохранить</code>.</p>
+      <p>Файл хранится в Home Assistant по пути <code>/config/www/live2d/neiri-slides.json</code>. Бэкенд редактора не навязывает фиксированную схему: это обычный JSON-объект.</p>
+    </section>
+  </div>
+  <script>
+    const tokenEl = document.getElementById('token');
+    const editorEl = document.getElementById('editor');
+    const statusEl = document.getElementById('status');
+    const loadBtn = document.getElementById('loadBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const validateBtn = document.getElementById('validateBtn');
+
+    tokenEl.value = window.localStorage.getItem('haoskiosk.editor.token') || '';
+
+    function headers() {
+      const headers = { 'Content-Type': 'application/json' };
+      const token = tokenEl.value.trim();
+      if (token) headers.Authorization = `Bearer ${token}`;
+      return headers;
+    }
+
+    function setStatus(text, kind) {
+      statusEl.textContent = text || '';
+      statusEl.className = `status${kind ? ` ${kind}` : ''}`;
+    }
+
+    function persistToken() {
+      window.localStorage.setItem('haoskiosk.editor.token', tokenEl.value.trim());
+    }
+
+    async function loadConfig() {
+      persistToken();
+      setStatus('Загрузка…');
+      const response = await fetch('/editor/config', { headers: headers() });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+      editorEl.value = JSON.stringify(data.config, null, 2);
+      setStatus('Конфигурация загружена.', 'ok');
+    }
+
+    function parseConfig() {
+      return JSON.parse(editorEl.value);
+    }
+
+    async function saveConfig() {
+      persistToken();
+      const parsed = parseConfig();
+      setStatus('Сохранение…');
+      const response = await fetch('/editor/config', {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify(parsed),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+      editorEl.value = JSON.stringify(data.config, null, 2);
+      setStatus('Конфигурация сохранена.', 'ok');
+    }
+
+    loadBtn.addEventListener('click', async () => {
+      try { await loadConfig(); } catch (error) { setStatus(String(error), 'bad'); }
+    });
+
+    validateBtn.addEventListener('click', () => {
+      try {
+        parseConfig();
+        setStatus('JSON синтаксически корректен.', 'ok');
+      } catch (error) {
+        setStatus(String(error), 'bad');
+      }
+    });
+
+    saveBtn.addEventListener('click', async () => {
+      try { await saveConfig(); } catch (error) { setStatus(String(error), 'bad'); }
+    });
+
+    loadConfig().catch((error) => setStatus(String(error), 'bad'));
+  </script>
+</body>
+</html>
+"""
 
 
 # --------------------------------------------------------------------------- #
@@ -163,6 +383,33 @@ VALID_URL_REGEX: Final[re.Pattern[str]] = re.compile(
 def is_valid_url(url: str) -> bool:
     """Validate URL format (allows http://, https://, bare domain/IP, path, query, fragment)."""
     return bool(url == 'about:blank' or VALID_URL_REGEX.fullmatch(url.strip()))
+
+
+def normalize_display_config(config: Any) -> dict[str, Any]:
+    """Validate the display editor JSON structure without hardcoding semantics."""
+    if not isinstance(config, dict):
+        raise ValueError("Display config must be a JSON object")
+    return cast(dict[str, Any], config)
+
+
+def load_display_config() -> dict[str, Any]:
+    """Load display config JSON from disk or return the built-in default."""
+    if not os.path.exists(DISPLAY_CONFIG_PATH):
+        return normalize_display_config(DEFAULT_DISPLAY_CONFIG)
+    with open(DISPLAY_CONFIG_PATH, "r", encoding="utf-8") as handle:
+        return normalize_display_config(json.load(handle))
+
+
+def save_display_config(config: Any) -> dict[str, Any]:
+    """Persist validated display config atomically."""
+    normalized = normalize_display_config(config)
+    os.makedirs(os.path.dirname(DISPLAY_CONFIG_PATH), exist_ok=True)
+    temp_path = DISPLAY_CONFIG_PATH + ".tmp"
+    with open(temp_path, "w", encoding="utf-8") as handle:
+        json.dump(normalized, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+    os.replace(temp_path, DISPLAY_CONFIG_PATH)
+    return normalized
 
 # --------------------------------------------------------------------------- #
 # Setup
@@ -857,6 +1104,10 @@ async def security_middleware(
     remote_ip = request.remote or request.headers.get("X-Forwarded-For", "unknown").split(",")[0].strip()
     logging.debug("[request] %s %s from %s", request.method, request.path, remote_ip)  # Log every request for debug
 
+    cmd_name = getattr(handler, "cmd_name", None)
+    if cmd_name is None:
+        return await handler(request)
+
     if REST_BEARER_TOKEN:
         auth_header = request.headers.get("Authorization", "")
         if auth_header != f"Bearer {REST_BEARER_TOKEN}":
@@ -865,8 +1116,7 @@ async def security_middleware(
                 {"success": False, "error": "Invalid or missing REST_BEARER_TOKEN Authorization token"},
                 status=401,)
 
-    cmd_name = getattr(handler, "cmd_name")
-    if cmd_name in PROTECTED_COMMANDS:
+    if cmd_name in PROTECTED_COMMANDS or cmd_name == EDITOR_CONFIG_COMMAND:
         if  remote_ip not in ("127.0.0.1", "::1", "localhost") and REST_BEARER_TOKEN is None:
             logging.warning("[security] Blocked protected REST command '%s' from non-localhost IP: %s", cmd_name, remote_ip)
             return web.json_response({
@@ -883,6 +1133,32 @@ async def create_app() -> web.Application:
     """Create and configure the aiohttp Application instance."""
 
     app = web.Application(middlewares=[security_middleware])
+
+    async def editor_page(_: web.Request) -> web.Response:
+        return web.Response(text=EDITOR_HTML, content_type="text/html")
+
+    async def editor_get_config(_: web.Request) -> web.Response:
+        try:
+            config = load_display_config()
+            return web.json_response({"success": True, "config": config})
+        except Exception as exc:
+            logging.exception("Failed to load display config: %s", exc)
+            return web.json_response({"success": False, "error": str(exc)}, status=500)
+
+    async def editor_save_config(request: web.Request) -> web.Response:
+        try:
+            payload = await request.json()
+        except (json.JSONDecodeError, ValueError):
+            return web.json_response({"success": False, "error": "Invalid JSON payload"}, status=400)
+
+        try:
+            config = save_display_config(payload)
+            return web.json_response({"success": True, "config": config})
+        except ValueError as exc:
+            return web.json_response({"success": False, "error": str(exc)}, status=400)
+        except Exception as exc:
+            logging.exception("Failed to save display config: %s", exc)
+            return web.json_response({"success": False, "error": str(exc)}, status=500)
 
     # Register routes for defined functions
     for fullname, func in FunctionRegistry.items():
@@ -914,6 +1190,12 @@ async def create_app() -> web.Application:
             app.router.add_post(route, make_handler)
 
     # === Special routes ===
+    editor_get_config.cmd_name = EDITOR_CONFIG_COMMAND  # type: ignore[attr-defined]
+    editor_save_config.cmd_name = EDITOR_CONFIG_COMMAND  # type: ignore[attr-defined]
+    app.router.add_get("/", editor_page)
+    app.router.add_get("/editor/config", editor_get_config)
+    app.router.add_post("/editor/config", editor_save_config)
+
     # Health check — always allowed, no auth, no protection
     app.router.add_get("/health", lambda _: web.json_response({"status": "ok"}))
 

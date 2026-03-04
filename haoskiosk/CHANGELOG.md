@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.3.1-welizard.7 - March 2026
+
+- Add a first-party ingress editor for kiosk display page configuration
+- Store page definitions in `/config/display-pages.json` instead of treating
+  Lovelace itself as the page editor
+
 ## v1.3.1-welizard.6 - March 2026
 
 - Fix `touch_debug_level` schema so Home Assistant Supervisor can index the
