@@ -28,6 +28,16 @@ configuration:
     description: |
       Browser refresh interval in seconds; 0 for never [Default: 600]
       Note: Recommended since on RPi, console messages can overwrite browser
+  browser_engine:
+    name: "Browser Engine"
+    description: |
+      Choose which browser runtime to launch. `chromium` is recommended for
+      modern dashboards, WebGL, emoji rendering, and touch-heavy UIs.
+      Switch to `luakit` if you need the original lightweight behavior or
+      want to compare compatibility. [Default: chromium]
+    items:
+      chromium: "Chromium"
+      luakit: "Luakit"
   screen_timeout:
     name: "Screen Timeout"
     description: "Time in seconds until screen blanks; 0 for never [Default: 0]"
